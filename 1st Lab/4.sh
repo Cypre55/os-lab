@@ -1,1 +1,1 @@
-mkdir data1d/files_mod&&cd data1d/temp&&sed 's/ /,/g' $1|awk '{print NR","$0}'>../files_mod/$1
+mkdir -p ../files_mod&&sed 's/ /,/g' $1|awk '{print NR","$0}'>../files_mod/$1
