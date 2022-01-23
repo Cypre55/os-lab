@@ -1,1 +1,0 @@
-awk -v N=$2 '{print tolower($N)}' $1|sort|uniq -c|sort -r|awk '{print $2" "$1}'>1f_output_$2_column.freq
