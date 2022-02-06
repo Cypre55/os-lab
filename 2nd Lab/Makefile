@@ -4,3 +4,12 @@ temp: temp.cpp
 
 run: temp
 	@./temp
+
+siba: siba.c
+	@gcc -o $@ $^
+
+sib: siba
+	@./siba
+
+clean:
+	@rm -rf siba temp
