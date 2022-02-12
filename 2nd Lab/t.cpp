@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fcntl.h>
 #include "history.hpp"
+#include <curses.h>
 
 using namespace std;
 
@@ -27,12 +28,12 @@ int main()
     // close(stdin_copy);
     // close(stdout_copy);
 
-    History history;
+    // History history;
 
-    // history.addToHistory("Start");
-    // history.getLatest();
+    // // history.addToHistory("Start");
+    // // history.getLatest();
 
-    string result = history.search("liber");
+    // string result = history.search("liber");
 
-    cout << result << endl;
+    // cout << result << endl;
 }

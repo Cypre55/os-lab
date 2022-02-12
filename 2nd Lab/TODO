@@ -1,0 +1,20 @@
+# TODO
+
+`Ctrl+C` should close the current process and return the prompt
+
+`Ctrl+Z` move the process into background, shell should reappear
+
+`history` command gets last 1000 commands
+
+`Ctrl + R` 
+
+* Show "Enter search item"
+* Accept string
+* Search history
+* Give exact match or longest substring with min 2 chars
+* Else "No match for search term in history"
+
+`Tab`
+
+* Print options
+* Retain command so far
