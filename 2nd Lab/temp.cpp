@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-// #include <cstring>
 #include <bits/stdc++.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -183,7 +182,6 @@ void executeCommand(char *cmd_arr[], int cmd_len, int infd = 0, int outfd = 1)
         cout << "ded" << endl;
     }
 }
-
 
 int main (void) {
 
