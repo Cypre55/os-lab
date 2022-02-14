@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <sys/wait.h>
+#include <dirent.h>
 
 #include <fcntl.h> // for open, close etc
 #include <unistd.h> // for exec family of commands
@@ -13,7 +14,8 @@
 // make an tokenise command function which takes care of ' and "
 // remove bits/stdc++.h
 // Before returning termios string, always reset
-// implement cd
+// implement multiwatch
+// Ctrl+C and Ctrl+Z handlers
 
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define BUF_LEN (1024 * (EVENT_SIZE + 16))
@@ -53,6 +55,7 @@ class History {
 
     vector<string> list;
 
+    int filename_len = 1000;
     string filename;
 
     // Read history file
@@ -145,7 +148,13 @@ public:
         write_history();
     }
 
-    History() : filename("./.nicsh_history") {
+    History() : filename("/.nicsh_history") {
+        char fn[filename_len];
+        getcwd(fn, filename_len);
+        string fn_str = string(fn);
+        fn_str.append(filename);
+        filename = fn_str;
+        cout << filename << endl;
         list.resize(history_len);
         last_entered = read_history();
     }
@@ -163,12 +172,13 @@ public:
 
     // Get 1000 latest
     void getLatest() {
+        cout << "History: " << endl;
         for (int i = 0; i < return_len; i++)
         {
             int ind = (last_entered-i+history_len)%history_len;
             string str = list[ind];
             if (str != "")
-                cout << str << endl;
+                cout << "\t" << str << endl;
         }
     }
 
@@ -226,6 +236,215 @@ public:
 };
 
 History history;
+
+void autoComplete(string &line) {
+
+    string printedString;
+    ostringstream printedStream(printedString);
+
+    istringstream ss(line);
+  
+    string last_token; // for storing each word
+  
+    while (ss >> last_token) 
+        ;
+
+    vector <string> fileList;
+	struct dirent * file;
+	DIR * dir = opendir(".");
+	while ((file = readdir(dir)) != NULL)
+	{
+		fileList.push_back(string(file->d_name));
+	}
+
+    printedStream << "\n";
+
+    vector <string> options;
+	for (auto x : fileList)
+	{
+		// check if queryString is a prefix
+		if (x.length() >= last_token.length() && x.substr(0, last_token.length()) == last_token)
+		{
+			options.push_back(x);
+		}
+	}
+
+    string answer = "";
+    if (options.size() == 0)
+    {
+        ;
+    }
+    else if (options.size() == 1)
+	{
+		answer = options[0]; 
+	}
+	else
+	{
+		int count = 0;
+		for (auto x : options)
+		{
+			printedStream << ++count << ") " << x << "\n"; 
+		}
+
+        printedStream << "Choice: ";
+        cout << printedStream.str();
+        cout.flush();
+
+		string choice_string;
+		getline(cin, choice_string);
+
+        printedStream << choice_string << "\n";
+
+        
+        int choice = stoi(choice_string);
+		answer = options[choice - 1];
+        if (choice > 0 && choice <= options.size())
+		{
+			answer = options[choice - 1];
+		}
+	
+    
+    }
+
+    // cout << answer << endl;
+    // sleep(1);
+    printedStream << line << "\t";
+
+    int str_len = printedStream.str().length();
+
+    // cout << str_len << endl;
+
+    // for (int i = 0; i < str_len; i++) {
+    //     cout << "\b \b";
+    //     cout.flush();
+    // }
+
+
+    if (answer != "")
+        line = line.substr(0, line.length()-last_token.length());
+
+    line.append(answer);
+
+}
+
+void executeMultiWatch(char *cmd_arr[], int cmd_len) {
+    // syntax is multiWatch ["cmd1", "cmd2", "cmd3"]
+
+    // char **
+
+    // for (int i = 0; i < cmd_len; )
+
+    // vector <string> commands;
+    // int n = command.length();
+    // for (int i = 0; i < n; )
+    // {
+    //     if (command[i] == '\"')
+    //     {
+    //         // TODO check this
+    //         // find the next ','
+    //         // better than looking for '\"' as these can be nested
+    //         int j;
+    //         bool found = false;
+    //         for (j = i + 1; j < n; j++)
+    //         {
+    //             if (command[j] == ',')
+    //             {
+    //                 commands.push_back(command.substr(i + 1, j - i - 2));
+    //                 found = true;
+    //                 i = j;
+    //                 break;
+    //             }
+    //         }
+    //         if (!found)
+    //         {
+    //             commands.push_back(command.substr(i + 1, n - i - 3));
+    //             i = n;
+    //         }
+    //     }
+    // }
+
+    // DEBUG
+    // cout << "multiwatch commands are:" << endl;
+    // for (auto x : commands)
+    // {
+    //     cout << x << endl;
+    // }
+    // cout << endl;
+
+    // int command_count = commands.size();
+
+    // int inotify_fd = inotify_init();
+    // if (inotify_fd == -1)
+    // {
+    //     perror("inotify_init");
+    // }
+
+    // vector <int> readFD (command_count), writeFD (command_count), inotify_WD (command_count);
+    // for (int i = 0; i < command_count; i++)
+    // {
+    //     string filename = ".temp.PID" + to_string(i + 1) + ".txt";
+    //     writeFD[i] = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
+    //     readFD[i] = open(filename.c_str(), O_RDONLY, 0666);
+    //     int inotify_wd = inotify_add_watch(inotify_fd, filename.c_str(), IN_MODIFY);
+    //     inotify_WD[i] = inotify_wd;
+    // }
+
+    // vector <pid_t> process_ids (command_count);
+    // for (int i = 0; i < command_count; i++)
+    // {
+    //     process_ids[i] = fork();
+    //     if (process_ids[i] < 0)
+    //     {
+    //         printf("Error in generating the process.\n");
+    //         exit(0);
+    //     }
+    //     if (process_ids[i] == 0)
+    //     {
+    //         // TODO execute commands[i].
+    //         dup2(writeFD[i], STDOUT_FILENO);
+    //     }
+    // }
+
+    // int length, i = 0;
+    // char buffer[BUF_LEN];
+
+    // while (true)
+    // {
+    //     __attribute__((aligned((struct inotify_event))));
+    //     length = read(inotify_fd, buffer, BUF_LEN);
+
+    //     if (length < 0)
+    //     {
+    //         perror("read");
+    //     }
+
+    //     while (i < length)
+    //     {
+    //         struct inotify_event *event = (struct inotify_event *) &buffer[i];
+
+    //         if (event->len)
+    //         {
+    //             if (event->mask & IN_MODIFY)
+    //             {
+    //                 int file_WD = event->wd;
+    //                 int file_index = -1;
+    //                 for (int x = 0; x < command_count; x++)
+    //                 {
+    //                     if (inotify_WD[x] == file_WD)
+    //                     {
+    //                         file_index = x;
+    //                     }
+    //                 }
+    //             }
+
+    //             // print the output of file_index in this format
+    //         }
+    //         i += sizeof(struct inotify_event) + event->len;
+    //     }
+
+    // }
+
+}
 
 void splitCommand (string str, vector<string> &cmd) {
 
@@ -291,6 +510,28 @@ int convertVectorToArray (vector<string> &vect, char** &arr) {
 
 void executeCommand(char *cmd_arr[], int cmd_len, int infd = 0, int outfd = 1)
 {
+    // Handling Custom Commands
+    string command_name = string(cmd_arr[0]);
+    if (command_name == "cd") {
+        if(chdir(cmd_arr[1])!=0)
+        {
+            cout << "Error: directory not found\n";
+        }
+        return;
+    }
+    else if (command_name == "history") {
+        history.getLatest();
+        return;
+    }
+    else if (command_name == "exit") {
+        exit(0);
+        return;
+    }
+    else if (command_name == "multiwatch") {
+
+        return;
+    }
+
     // check if input or output redirection or if it has "&"
     char *infile = nullptr, *outfile = nullptr;
     bool bg = false;
@@ -463,7 +704,10 @@ string getLine () {
             // cout << "Tab Pressed" << endl;
             // TODO: AutoComplete Backend
 
+            autoComplete(result);
             // Return appropitaly
+            cout << "\n\nnicsh >>> ";
+            cout << result;
 
         }
         else if ((int) c == 4) {
@@ -508,7 +752,7 @@ int main (void) {
 
     cout << getpid() << endl;
 
-    string prompt = "nicsh >>> ";
+    string prompt = "\nnicsh >>> ";
     string line;
     int number_pipes;
     char ** cmd_arr;
@@ -530,7 +774,7 @@ int main (void) {
         string line = getLine();
 
         if (line == "<<>>") {
-            cout << "Exit\n";
+            cout << "exit\n";
             break;
         }
         
@@ -594,117 +838,3 @@ int main (void) {
 
 }
 
-void executeMultiWatch(string command)
-{
-    // syntax is multiWatch ["cmd1", "cmd2", "cmd3"]
-    vector <string> commands;
-    int n = command.length();
-    for (int i = 0; i < n; )
-    {
-        if (command[i] == '\"')
-        {
-            // TODO check this
-            // find the next ','
-            // better than looking for '\"' as these can be nested
-            int j;
-            bool found = false;
-            for (j = i + 1; j < n; j++)
-            {
-                if (command[j] == ',')
-                {
-                    commands.push_back(command.substr(i + 1, j - i - 2));
-                    found = true;
-                    i = j;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                commands.push_back(command.substr(i + 1, n - i - 3));
-                i = n;
-            }
-        }
-    }
-
-    // DEBUG
-    // cout << "multiwatch commands are:" << endl;
-    // for (auto x : commands)
-    // {
-    //     cout << x << endl;
-    // }
-    // cout << endl;
-
-    // int command_count = commands.size();
-
-    // int inotify_fd = inotify_init();
-    // if (inotify_fd == -1)
-    // {
-    //     perror("inotify_init");
-    // }
-
-    // vector <int> readFD (command_count), writeFD (command_count), inotify_WD (command_count);
-    // for (int i = 0; i < command_count; i++)
-    // {
-    //     string filename = ".temp.PID" + to_string(i + 1) + ".txt";
-    //     writeFD[i] = open(filename.c_str(), O_WRONLY | O_CREAT, 0666);
-    //     readFD[i] = open(filename.c_str(), O_RDONLY, 0666);
-    //     int inotify_wd = inotify_add_watch(inotify_fd, filename.c_str(), IN_MODIFY);
-    //     inotify_WD[i] = inotify_wd;
-    // }
-
-    // vector <pid_t> process_ids (command_count);
-    // for (int i = 0; i < command_count; i++)
-    // {
-    //     process_ids[i] = fork();
-    //     if (process_ids[i] < 0)
-    //     {
-    //         printf("Error in generating the process.\n");
-    //         exit(0);
-    //     }
-    //     if (process_ids[i] == 0)
-    //     {
-    //         // TODO execute commands[i].
-    //         dup2(writeFD[i], STDOUT_FILENO);
-    //     }
-    // }
-
-    // int length, i = 0;
-    // char buffer[BUF_LEN];
-
-    // while (true)
-    // {
-    //     __attribute__((aligned((struct inotify_event))));
-    //     length = read(inotify_fd, buffer, BUF_LEN);
-
-    //     if (length < 0)
-    //     {
-    //         perror("read");
-    //     }
-
-    //     while (i < length)
-    //     {
-    //         struct inotify_event *event = (struct inotify_event *) &buffer[i];
-
-    //         if (event->len)
-    //         {
-    //             if (event->mask & IN_MODIFY)
-    //             {
-    //                 int file_WD = event->wd;
-    //                 int file_index = -1;
-    //                 for (int x = 0; x < command_count; x++)
-    //                 {
-    //                     if (inotify_WD[x] == file_WD)
-    //                     {
-    //                         file_index = x;
-    //                     }
-    //                 }
-    //             }
-
-    //             // print the output of file_index in this format
-    //         }
-    //         i += sizeof(struct inotify_event) + event->len;
-    //     }
-
-    // }
-
-}

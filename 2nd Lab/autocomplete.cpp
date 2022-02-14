@@ -14,10 +14,10 @@ int main()
 	{
 		fileList.push_back(string(file->d_name));
 	}
-	for (auto x : fileList)
-	{
-		cout << x << endl;
-	}
+	// for (auto x : fileList)
+	// {
+	// 	cout << x << endl;
+	// }
 	string queryString;
 	cin >> queryString;
 	vector <string> options;
