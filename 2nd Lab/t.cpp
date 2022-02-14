@@ -1,8 +1,8 @@
 #include <unistd.h>
 #include <iostream>
 #include <fcntl.h>
+#include <termios.h>
 #include "history.hpp"
-#include <curses.h>
 
 using namespace std;
 
@@ -36,4 +36,10 @@ int main()
     // string result = history.search("liber");
 
     // cout << result << endl;
+    
+    cout << "Hello";
+    cout.flush();
+    sleep(1);
+    cout << "\b \b\n";
+
 }
