@@ -11,6 +11,14 @@
 int no_of_producers;
 int no_of_consumers;
 
+// TODO Max number of children that can be added to a node
+#define MAX_CHILD_JOBS 1000
+
+#define DONE 2
+
+#define MAX_TREE_SIZE 500
+#define MIN_TREE_SIZE 300
+
 // TODO: Log Steps like Produced, started, completed
 
 using namespace std;
@@ -20,9 +28,9 @@ struct Node
     int job_id;
     int t2c; // In milliseconds
 
-    int parentIdx;
-    int childJobs[MAX_CHILD_JOBS];
-    int numChildActive;
+    int parent_ind;
+    int child_jobs[MAX_CHILD_JOBS];
+    int num_child_active;
 
     pthread_mutex_t mutex;
     pthread_mutexattr_t attr;
@@ -35,85 +43,317 @@ struct Node
 
 };
 
-struct SharedMem {
-    int size;
-    Node* nodes;
+
+// struct SharedMem {
+//     int size;
+//     Node* nodes;
+//     pthread_mutex_t mutex;
+//     pthread_mutexattr_t attr;
+//     int _count;
+//     int rootIdx;
+
+//     void init() {
+//         pthread_mutexattr_init(&attr);
+//         pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+//         pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+//         pthread_mutex_init(&mutex, &attr);
+//         _count = 0;
+//         for (int i = 0; i < size; i++) {
+//             nodes[i].init();
+//             nodes[i].status = DONE;
+//         }
+//         rootIdx = -1;
+//     }
+//     // solution 1 to chopstick issue here: try_lock if held continue else try to acquire lock
+//     int addNode(Node& node) {
+//         pthread_mutex_lock(&mutex);
+//         if (_count < size) {
+//             for (int i = 0; i < size; i++) {
+//                 if (i == node.parentIdx)
+//                     continue;
+//                 if (nodes[i].status == DONE) {
+//                     pthread_mutex_lock(&nodes[i].mutex);
+//                     nodes[i] = node;
+//                     pthread_mutex_unlock(&nodes[i].mutex);
+//                     _count++;
+//                     if (rootIdx == -1)
+//                         rootIdx = i;
+//                     pthread_mutex_unlock(&mutex);
+//                     return i;
+//                 }
+//             }
+//         }
+//         pthread_mutex_unlock(&mutex);
+//         return -1;
+//     }
+// };
+
+struct SharedMemoryBlock
+{
+    Node *array;
+    int max_size;
+    int total_nodes;
+    int finished_producing;
+    int completed_nodes;
+
     pthread_mutex_t mutex;
     pthread_mutexattr_t attr;
-    int _count;
-    int rootIdx;
-
-    void init() {
-        pthread_mutexattr_init(&attr);
-        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
-        pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-        pthread_mutex_init(&mutex, &attr);
-        _count = 0;
-        for (int i = 0; i < size; i++) {
-            nodes[i].init();
-            nodes[i].status = DONE;
-        }
-        rootIdx = -1;
-    }
-    // solution 1 to chopstick issue here: try_lock if held continue else try to acquire lock
-    int addNode(Node& node) {
-        PTHREAD_MUTEX_LOCK(&mutex);
-        if (_count < size) {
-            for (int i = 0; i < size; i++) {
-                if (i == node.parentIdx)
-                    continue;
-                if (nodes[i].status == DONE) {
-                    PTHREAD_MUTEX_LOCK(&nodes[i].mutex);
-                    nodes[i] = node;
-                    PTHREAD_MUTEX_UNLOCK(&nodes[i].mutex);
-                    _count++;
-                    if (rootIdx == -1)
-                        rootIdx = i;
-                    PTHREAD_MUTEX_UNLOCK(&mutex);
-                    return i;
-                }
-            }
-        }
-        PTHREAD_MUTEX_UNLOCK(&mutex);
-        return -1;
-    }
 };
 
-// 
-// int init_size = rand() % (MAX_TREE_SIZE - MIN_TREE_SIZE + 1) + MIN_TREE_SIZE;
-//     int final_size = init_size + producers * (1000 / MIN_SLEEP_TIME) * (MAX_LIFETIME);
+SharedMemoryBlock *block;
 
-//     cout << "Creating shared memory for " << final_size << " nodes\n";
-//     shmid = shmget(IPC_PRIVATE, sizeof(SharedMem), IPC_CREAT | 0666);
-//     shm = (SharedMem*)shmat(shmid, NULL, 0);
+void *producer_function(void *arg)
+{
+    // hardcoded here
+    int running_time = rand() % 11 + 10;
+    cout << "Producer Waiting Time: " << running_time << endl;
 
-//     key_t key = ftok(".", 'a');
-//     shmid2 = shmget(key, sizeof(Node) * final_size, IPC_CREAT | 0666);
-//     shm->nodes = (Node*)shmat(shmid2, NULL, 0);
-//     shm->size = final_size;
-//
+    time_t start_time, current_time;
+    time(&start_time);
+
+    while (difftime(time(&current_time), start_time) < running_time)
+    {
+        //      Runs for random time between 10 to 20 secs
+        //      Add a child to a non-running node
+        //      Sleep for random time between 0 to 500 ms.
+        cout << "Added a job into the tree with id " << rand() % 100000000 + 1 << endl;
+
+
+        pthread_mutex_lock(&block->mutex);
+        int N = block->total_nodes;
+        block->total_nodes++;
+        pthread_mutex_unlock(&block->mutex);
+
+        while (true)
+        {
+            int node_index = rand() % N;
+
+            pthread_mutex_lock(&block->array[node_index].mutex);
+
+            if (block->array[node_index].status == 0)
+            {
+                // TODO properly select job_id
+                
+                pthread_mutex_lock(&block->array[N].mutex);
+                block->array[N].job_id = 10; 
+                block->array[N].parent_ind = node_index;
+                block->array[N].status = 0;
+                block->array[N].t2c = rand() % 251;
+                block->array[N].num_child_active = 0;
+                pthread_mutex_unlock(&block->array[N].mutex);
+
+                block->array[node_index].child_jobs[block->array[node_index].num_child_active] = N;
+                block->array[node_index].num_child_active++;
+
+                block->total_nodes++;
+
+                break;
+            }
+            pthread_mutex_unlock(&block->array[node_index].mutex);
+        }
+        
+        int sleep_time = rand() % 501;
+        usleep(sleep_time * 1000);
+    }
+
+    return nullptr;
+}
+
+int dfs(int node_index)
+{
+    int x = node_index;
+    for (int i = 0; i < block->array[x].num_child_active; i++)
+    {
+        int child = block->array[x].child_jobs[i];
+        if (block->array[child].status == 0)
+        {
+            x = dfs(child);
+        }
+    }
+    return x;
+}
+
+int dfs2(int x)
+{
+    int count = 1;
+    for (int i = 0; i < block->array[x].num_child_active; i++)
+    {
+        int child = block->array[x].child_jobs[i];
+        count += dfs2(child);
+    }
+    return count;
+}
+
+void *consumer_function(void* arg)
+{
+    while(true)
+    {
+        pthread_mutex_lock(&block->mutex);
+        if (block->completed_nodes == block->total_nodes && block->finished_producing == 1)
+        {
+            pthread_mutex_unlock(&block->mutex);
+            break;
+        }
+        pthread_mutex_unlock(&block->mutex);
+
+        int node_index;
+        // DFS
+
+        // start from the root
+        node_index = 0;
+        node_index = dfs(node_index);
+
+
+        pthread_mutex_lock(&block->array[node_index].mutex);
+        block->array[node_index].status = 1;
+        pthread_mutex_unlock(&block->array[node_index].mutex);
+        cout << "Job " << block->array[node_index].job_id << " began executing.\n";
+
+
+        usleep(block->array[node_index].t2c * 1000);
+
+        pthread_mutex_lock(&block->array[node_index].mutex);
+        block->array[node_index].status = 2;
+        pthread_mutex_unlock(&block->array[node_index].mutex);
+        cout << "Job " << block->array[node_index].job_id << " completed execution.\n";
+
+    }
+
+    return nullptr;
+}
 
 int main(void)
 {
+    srand(time(NULL));
     // Process A
     cout << "Enter number of producers: ";
     cin >> no_of_producers;
-    cin >> no_of_producers;
+    cout << "Enter number of workers: ";
+    cin >> no_of_consumers;
 
     // Init Shared Memory
+
+    int init_size = rand() % (MAX_TREE_SIZE - MIN_TREE_SIZE + 1) + MIN_TREE_SIZE;
+    int max_nodes = init_size + 100 * no_of_producers;
+
+    key_t key_ = ftok(".", 0);
+    int shmid = shmget(key_, sizeof(SharedMemoryBlock), IPC_CREAT | 0666);
+    block = (SharedMemoryBlock *) shmat(shmid, NULL, 0);
+
+    key_t key = ftok("./t", 1);
+    int node_id = shmget(key, sizeof(Node) * max_nodes, IPC_CREAT | 0666);
+    block->array = (Node *) shmat(node_id, NULL, 0);
+    block->max_size = max_nodes;
+    block->finished_producing = 0;
+
+
+    // Init Mutexes
+    
+
+    pthread_mutexattr_init(&block->attr);
+    // pthread_mutexattr_settype(&block->attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+    pthread_mutexattr_setpshared(&block->attr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&block->mutex, &block->attr);
+
+    for (int i = 0; i < max_nodes; i++)
+    {
+        pthread_mutexattr_init(&block->array[i].attr);
+        // pthread_mutexattr_settype(&block->array[i].attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+        pthread_mutexattr_setpshared(&block->array[i].attr, PTHREAD_PROCESS_SHARED);
+        pthread_mutex_init(&block->array[i].mutex, &block->array[i].attr);
+    }
+    // cout << "Hi\n";
+    // cout << block->array << endl;
+    // cout << "Hello\n";
+
 
     // Init Random tree (300-500)    
     //      Maximum completion time 250 ms
 
+    block->array[0].job_id = 10; 
+    block->array[0].parent_ind = -1;
+    block->array[0].status = 0;
+    block->array[0].t2c = rand() % 251;
+    block->array[0].num_child_active = 0;
+
+    block->total_nodes++;
+
+    for (int i = 0; i < init_size - 1; i++)
+    {
+        int N;
+
+        while (true)
+        {
+            N = block->total_nodes;
+            int node_index = rand() % N;
+            if (block->array[node_index].status == 0)
+            {
+                // TODO properly select job_id
+                
+                block->array[N].job_id = 10; 
+                block->array[N].parent_ind = node_index;
+                block->array[N].status = 0;
+                block->array[N].t2c = rand() % 251;
+                block->array[N].num_child_active = 0;
+
+                block->array[node_index].child_jobs[block->array[node_index].num_child_active] = N;
+                block->array[node_index].num_child_active++;
+
+                block->total_nodes++;
+
+                break;
+            }
+        }
+    }
+
+    // cout << "init size is " << init_size << endl;
+    // cout << "tree size is " << dfs2(0) << endl;
+
     // Spawn Producer Threads
-    //      Runs for random time between 10 to 20 secs
-    //      Add a child to a non-running node
-    //      Sleep for random time between 0 to 500 ms.
+    
+
+    pthread_t producers[no_of_producers];
+
+    for (int i = 0; i < no_of_producers; i++)
+    {
+        pthread_create(&producers[i], nullptr, &producer_function, nullptr);
+    }
 
 
 
-    // Spawn Process B
+    // int pid = fork();
+    // if (pid == 0)
+    // {
+    //     pthread_t consumers[no_of_consumers];
+    //     block = (SharedMemoryBlock *) shmat(shmid, nullptr, 0);
+    //     for (int i = 0; i < no_of_consumers; i++)
+    //     {
+    //         pthread_create(&consumers[i], nullptr, &consumer_function, nullptr);
+    //     }
 
-        // Spawn Consumer Threads
+    //     for (int i = 0; i < no_of_consumers; i++)
+    //     {
+    //         pthread_join(consumers[i], nullptr);
+    //     }
+    //     shmdt(block);
+    //     exit(0);
+    // }
 
+    for (int i = 0; i < no_of_producers; i++)
+    {
+        pthread_join(producers[i], nullptr);
+    }
+
+    pthread_mutex_lock(&block->mutex);
+    block->finished_producing = 1;
+    cout << "All producers finished publishing.\n";
+    pthread_mutex_unlock(&block->mutex);
+
+
+    shmdt(block);
+
+    shmctl(shmid, IPC_RMID, nullptr);
+
+    return 0;
 }
+
