@@ -21,7 +21,8 @@ int currentScope;
 
 typedef struct freeSpaceNode
 {
-    int start, end;
+    void* start;
+    void* end;
     int prev, next;
     int used;
 
@@ -98,11 +99,15 @@ void createVar(char *varName, int type);
 // assignVar
 void assignVar(char *varName, long long int value);
 
+void getVar(char* varName, long long *value, char *c, int* type);
+
 // createArr
 void createArr(char *arrName, int size, int type);
 
 // assignArr
 void assignArr(char *arrName, int index, long long int value);
+
+void getArr(char* arrName, int index, long long *value, char *c, int* type);
 
 // freeElem
 void freeElem();

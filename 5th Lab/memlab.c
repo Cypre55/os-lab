@@ -41,7 +41,7 @@ void createMem(int MBs)
 
     // bk->freeSpaceList
     bk->freeSpaceListHead = bk->freeSpaceList;
-    bk->freeSpaceListHead->next = bk->freeSpaceListHead->prev =  NULL;
+    bk->freeSpaceListHead->next = bk->freeSpaceListHead->prev =  -1;
     bk->freeSpaceListHead->start = bk->startMem;
     bk->freeSpaceListHead->end = bk->endMem;
 
@@ -67,7 +67,6 @@ void createVar(char *varName, int type)
     
     // TODO
     // find the physical address and update the entry 'newVar'
-
     // put it in the page table
 
     freeSpaceNode *traverse = bk->freeSpaceListHead;
@@ -88,18 +87,18 @@ void createVar(char *varName, int type)
         {
             newVar.physicalAddress = traverse->start;
             traverse->used = 0;
-            freeSpaceNode *previous = traverse->prev;
-            freeSpaceNode *next = traverse->next;
+            freeSpaceNode *previous = &(bk->freeSpaceList[traverse->prev]);
+            freeSpaceNode *next = &(bk->freeSpaceList[traverse->next]);
             if (previous == NULL)
             {
                 bk->freeSpaceListHead = next;
             }
             else
             {
-                previous->next = next;
+                bk->freeSpaceList[previous->next] = *next;
                 if (next != NULL)
                 {
-                    next->prev = previous;
+                    bk->freeSpaceList[next->prev] = *previous;
                 }
             }
             found++;
@@ -107,13 +106,13 @@ void createVar(char *varName, int type)
         }
         else
         {
-            traverse = traverse->next;
+            traverse = &(bk->freeSpaceList[traverse->next]);
         }
     }
     if (found == 0)
     {
         printf("Cannot allocate this object due to less memory\n");
-        newVar.physicalAddress = -1;
+        newVar.physicalAddress = NULL;
     }
 
     memcpy(&(bk->pageTable[bk->pageTableIndex]), &newVar, sizeof(pageTableEntry));
@@ -148,6 +147,7 @@ void assignVar(char *varName, long long int value)
                     exit(1);
                 }
                 int toAssign = value;
+                // printf("Physical Addr: %p\n", bk->pageTable[i].physicalAddress);
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(int));
             }
             else if (type == 1)
@@ -180,6 +180,8 @@ void assignVar(char *varName, long long int value)
                 char toAssign = 1;
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(char));
             }
+
+            return;
         }
     }
 
@@ -188,13 +190,60 @@ void assignVar(char *varName, long long int value)
     return;
 }
 
-void createArr(char *arrName, int size, int type)
+void getVar(char* varName, long long *value, char *c, int* type)
+{
+    for (int i = 0; i < bk->pageTableIndex; i++)
+    {
+        if (strcmp(varName, bk->pageTable[i].name) == 0)
+        {
+            if (bk->pageTable[i].isMarkToDelete)
+            {
+                printf("Cannot assign this variable, it is marked for deletion.\n");
+                exit(1);
+            }
+            // Find if the variable can fit the value it is being assigned to
+
+            // TODO
+            // Don't know how to handle little endian and big endian
+            int type_ = bk->pageTable[i].type;
+            if (type_ == 0)
+            {
+                *value = *( (int*) bk->pageTable[i].physicalAddress);
+                *type = 0;
+            }
+            else if (type_ == 1)
+            {
+                int temp = *( (int*) bk->pageTable[i].physicalAddress);
+                *c = (char) temp;
+                *type = 1;
+            }
+            else if (type_ == 2)
+            {
+                *value = *( (int*) bk->pageTable[i].physicalAddress);
+                *type = 0;
+            }
+            else
+            {
+                *value = *( (int*) bk->pageTable[i].physicalAddress);
+                *type = 0;
+            }
+            return;
+        }
+    }
+
+    printf("Cannot find this variable\n");
+
+    return;
+}
+
+void createArr(char *arrName, int type, int size)
 {
     int numWords = ((size * typeToSize(type) + 31) / 32) * 32;
     pageTableEntry newArr;
     strcpy(newArr.name, arrName);
     newArr.type = type;
     newArr.size = typeToSize(type) * size;
+
     newArr.isMarkToDelete = 0;
     newArr.scope = currentScope;
     newArr.internalCounter = bk->internalCounter;
@@ -221,18 +270,18 @@ void createArr(char *arrName, int size, int type)
         {
             newArr.physicalAddress = traverse->start;
             traverse->used = 0;
-            freeSpaceNode *previous = traverse->prev;
-            freeSpaceNode *next = traverse->next;
+            freeSpaceNode *previous = &(bk->freeSpaceList[traverse->prev]);
+            freeSpaceNode *next = &(bk->freeSpaceList[traverse->next]);
             if (previous == NULL)
             {
                 bk->freeSpaceListHead = next;
             }
             else
             {
-                previous->next = next;
+                bk->freeSpaceList[previous->next] = *next;
                 if (next != NULL)
                 {
-                    next->prev = previous;
+                    bk->freeSpaceList[next->prev] = *previous;
                 }
             }
             found++;
@@ -240,13 +289,13 @@ void createArr(char *arrName, int size, int type)
         }
         else
         {
-            traverse = traverse->next;
+            traverse = &(bk->freeSpaceList[traverse->next]);
         }
     }
     if (found == 0)
     {
         printf("Cannot allocate this object due to less memory\n");
-        newArr.physicalAddress = -1;
+        newArr.physicalAddress = NULL;
     }
 
 
@@ -280,8 +329,6 @@ void assignArr(char *arrName, int index, long long int value)
             }
 
 
-            // TODO
-            // Don't know how to handle little endian and big endian
             if (type == 0)
             {
                 if (value > (1LL << 31) - 1 || value < -(1LL << 31))
@@ -289,6 +336,7 @@ void assignArr(char *arrName, int index, long long int value)
                     printf("Cannot assign this array, the value is out of range.\n");
                     exit(1);
                 }
+                printf("%lld\n", value);
                 int toAssign = value;
                 memcpy(bk->pageTable[i].physicalAddress + index * typeSize, &toAssign, sizeof(int));
             }
@@ -322,10 +370,68 @@ void assignArr(char *arrName, int index, long long int value)
                 char toAssign = 1;
                 memcpy(bk->pageTable[i].physicalAddress + index * typeSize, &toAssign, sizeof(char));
             }
+            return;
         }
     }
 
-    printf("Cannot find this array\n");1
+    printf("Cannot find this array\n");
+
+    return;
+}
+
+void getArr(char* arrName, int index, long long *value, char *c, int* type)
+{
+    for (int i = 0; i < bk->pageTableIndex; i++)
+    {
+        if (strcmp(arrName, bk->pageTable[i].name) == 0)
+        {
+            if (bk->pageTable[i].isMarkToDelete)
+            {
+                printf("Cannot assign this array, it is marked for deletion.\n");
+                exit(1);
+            }
+
+            int type_ = bk->pageTable[i].type;
+            int typeSize = typeToSize(type_);
+            int size = bk->pageTable[i].size;
+            int noOfItems = size / typeSize;
+
+            if (index >= noOfItems)
+            {
+                printf("Cannot assign this array, index out of range.\n");
+                exit(1);
+            }
+
+
+            // TODO
+            // Don't know how to handle little endian and big endian
+            if (type_ == 0)
+            {
+                printf("Index: %d\n", index);
+                *value = *( (int*) bk->pageTable[i].physicalAddress + index * typeSize);
+                *type = 0;
+            }
+            else if (type_ == 1)
+            {
+                int temp = *( (int*) bk->pageTable[i].physicalAddress);
+                *c = (char) temp;
+                *type = 1;
+            }
+            else if (type_ == 2)
+            {
+                *value = *( (int*) bk->pageTable[i].physicalAddress);
+                *type = 0;
+            }
+            else
+            {
+                *value = *( (int*) bk->pageTable[i].physicalAddress);
+                *type = 0;
+            }
+            return;
+        }
+    }
+
+    printf("Cannot find this array\n");
 
     return;
 }
@@ -344,7 +450,7 @@ void freeElem()
             int internalCounter;
             int isMarkToDelete;
 
-            bk->pageTable[i].name = "";
+            // bk->pageTable[i].name = "\0";
             bk->pageTable[i].physicalAddress = NULL;
             bk->pageTable[i].type = -1;
             bk->pageTable[i].size = -1;
@@ -363,15 +469,15 @@ int typeToSize(int type)
     switch (type)
     {
     case 0:
-        return 32;
+        return 4;
         break;
     
     case 1:
-        return 8;
+        return 1;
         break;
 
     case 2:
-        return 24;
+        return 3;
         break;
 
     case 3:

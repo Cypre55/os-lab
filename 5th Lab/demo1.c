@@ -8,18 +8,41 @@
 // function will create and populate an array of 50000 elements of the same
 // data type with random data, destroy the array and return.
 
+
+
 int main(void)
 {
 
-    createMem(10);
+    createMem(250);
 
     initScope();
 
     startScope();
 
-    createVar("a", 0);
+    createVar("a", CHAR);
 
-    assignVar("b", 10);
+    assignVar("a", 'c');
+
+    long long value;
+    char c;
+    int type;
+    getVar("a", &value, &c, &type);
+
+    if (type == 0)
+        printf("%lld\n", value);
+    else
+        printf("%c\n", c);
+
+    createArr("arr", INT, 10);
+
+    assignArr("arr", 1, 69);
+
+    getArr("arr", 1, &value, &c, &type);
+    if (type == 0)
+        printf("%lld\n", value);
+    else
+        printf("%c\n", c);
+
 
 
     endScope();
