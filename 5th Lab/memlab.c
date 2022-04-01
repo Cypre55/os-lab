@@ -33,13 +33,23 @@ void createMem(int MBs)
 
     // TODO 
     // Take care of PageTable and FreeSpaceNodeList
-
+    
     bk->startMem = mem + ((sizeof(BookkeepingSegment)));
     bk->endMem = bk->startMem + ((Bs - sizeof(BookkeepingSegment)) / 4) * 4;
 
     bk->usableWords = (bk->endMem - bk->startMem)/4;
 
     // bk->freeSpaceList
+    bk->freeSpaceListHead = bk->freeSpaceList;
+    bk->freeSpaceListHead->next = bk->freeSpaceListHead->prev =  NULL;
+    bk->freeSpaceListHead->start = bk->startMem;
+    bk->freeSpaceListHead->end = bk->endMem;
+
+    for (int i = 0; i < FREE_SPACE_LIST_SIZE; i++)
+    {
+        bk->freeSpaceList[i].used = 0;
+    }
+    bk->freeSpaceList[0].used = 1;
 
     return;
 }
@@ -59,6 +69,52 @@ void createVar(char *varName, int type)
     // find the physical address and update the entry 'newVar'
 
     // put it in the page table
+
+    freeSpaceNode *traverse = bk->freeSpaceListHead;
+    int found = 0;
+    while (traverse != NULL)
+    {   
+        // TODO check for bits and bytes
+        if (traverse->end - traverse->start > (newVar.size + 3) / 4 * 4)
+        {
+            // first block big enough to fit
+            newVar.physicalAddress = traverse->start;
+            traverse->start += (newVar.size + 3) / 4 * 4;
+            found++;
+            break;
+        }
+        // TODO check for bits and bytes
+        else if (traverse->end - traverse->start == (newVar.size + 3) / 4 * 4)
+        {
+            newVar.physicalAddress = traverse->start;
+            traverse->used = 0;
+            freeSpaceNode *previous = traverse->prev;
+            freeSpaceNode *next = traverse->next;
+            if (previous == NULL)
+            {
+                bk->freeSpaceListHead = next;
+            }
+            else
+            {
+                previous->next = next;
+                if (next != NULL)
+                {
+                    next->prev = previous;
+                }
+            }
+            found++;
+            break;
+        }
+        else
+        {
+            traverse = traverse->next;
+        }
+    }
+    if (found == 0)
+    {
+        printf("Cannot allocate this object due to less memory\n");
+        newVar.physicalAddress = -1;
+    }
 
     memcpy(&(bk->pageTable[bk->pageTableIndex]), &newVar, sizeof(pageTableEntry));
     bk->pageTableIndex++;
@@ -148,6 +204,51 @@ void createArr(char *arrName, int size, int type)
     // find the physical address and update the entry 'newArr'
 
     // put it in the page table
+    freeSpaceNode *traverse = bk->freeSpaceListHead;
+    int found = 0;
+    while (traverse != NULL)
+    {
+        // TODO check for bits and bytes
+        if (traverse->end - traverse->start > (newArr.size + 3) / 4 * 4)
+        {
+            // first block big enough to fit
+            newArr.physicalAddress = traverse->start;
+            traverse->start += (newArr.size + 3) / 4 * 4;
+            found++;
+            break;
+        }
+        else if (traverse->end - traverse->start == (newArr.size + 3) / 4 * 4)
+        {
+            newArr.physicalAddress = traverse->start;
+            traverse->used = 0;
+            freeSpaceNode *previous = traverse->prev;
+            freeSpaceNode *next = traverse->next;
+            if (previous == NULL)
+            {
+                bk->freeSpaceListHead = next;
+            }
+            else
+            {
+                previous->next = next;
+                if (next != NULL)
+                {
+                    next->prev = previous;
+                }
+            }
+            found++;
+            break;
+        }
+        else
+        {
+            traverse = traverse->next;
+        }
+    }
+    if (found == 0)
+    {
+        printf("Cannot allocate this object due to less memory\n");
+        newArr.physicalAddress = -1;
+    }
+
 
     memcpy(&(bk->pageTable[bk->pageTableIndex]), &newArr, sizeof(pageTableEntry));
     bk->pageTableIndex++;

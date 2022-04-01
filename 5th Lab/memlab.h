@@ -23,6 +23,7 @@ typedef struct freeSpaceNode
 {
     int start, end;
     int prev, next;
+    int used;
 
 } freeSpaceNode;
 
@@ -66,6 +67,7 @@ void markPageTableEntryToDelete();
 typedef struct BookkeepingSegment
 {
     freeSpaceNode freeSpaceList[FREE_SPACE_LIST_SIZE];
+    freeSpaceNode *freeSpaceListHead;
 
     pageTableEntry pageTable[PAGE_TABLE_SIZE];
 
