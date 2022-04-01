@@ -2,6 +2,7 @@
 #define MEMLAB_H
 
 // Data Structures
+#include <string.h>
 
 #define FREE_SPACE_LIST_SIZE 50
 
@@ -12,6 +13,15 @@
 #define CHAR 1
 #define MED_INT 2
 #define BOOL 3
+
+// Main Memory Variable
+void *mem;
+
+// Current Size of Page Table
+int pageTableIndex;
+
+// The Internal Counter to ensure Word Alignment
+int internalCounter;
 
 typedef struct freeSpaceNode
 {
@@ -37,7 +47,7 @@ typedef struct pageTableEntry
     unsigned int physicalAddress;
     int type;
     int size;
-
+    int internalCounter;
     int isMarkToDelete;
 
 } pageTableEntry;
@@ -68,5 +78,31 @@ void assignArr();
 
 // freeElem
 void freeElem();
+
+inline int typeToSize(int type)
+{
+    switch (type)
+    {
+    case 0:
+        return 32;
+        break;
+    
+    case 1:
+        return 8;
+        break;
+
+    case 2:
+        return 24;
+        break;
+
+    case 3:
+        return 1;
+        break;
+    
+    default:
+        break;
+    }
+    return -1;
+}
 
 #endif
