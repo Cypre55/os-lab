@@ -23,25 +23,36 @@ int main(void)
 
     assignVar("a", 'c');
 
-    long long value;
+    int value;
     char c;
     int type;
     getVar("a", &value, &c, &type);
 
     if (type == 0)
-        printf("%lld\n", value);
+        printf("%d\n", value);
     else
         printf("%c\n", c);
 
-    createArr("arr", INT, 10);
+    createVar("b", BOOL);
 
-    assignArr("arr", 1, 69);
+    assignVar("b", 0);
 
-    getArr("arr", 1, &value, &c, &type);
+    getVar("b", &value, &c, &type);
+
     if (type == 0)
-        printf("%lld\n", value);
+        printf("%d\n", value);
     else
         printf("%c\n", c);
+
+    // createArr("arr", INT, 10);
+
+    // assignArr("arr", 1, 69);
+
+    // getArr("arr", 3, &value, &c, &type);
+    // if (type == 0)
+    //     printf("%d\n", value);
+    // else
+    //     printf("%c\n", c);
 
 
 

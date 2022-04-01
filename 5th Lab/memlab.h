@@ -99,7 +99,7 @@ void createVar(char *varName, int type);
 // assignVar
 void assignVar(char *varName, long long int value);
 
-void getVar(char* varName, long long *value, char *c, int* type);
+void getVar(char* varName, int *value, char *c, int* type);
 
 // createArr
 void createArr(char *arrName, int size, int type);
@@ -107,7 +107,7 @@ void createArr(char *arrName, int size, int type);
 // assignArr
 void assignArr(char *arrName, int index, long long int value);
 
-void getArr(char* arrName, int index, long long *value, char *c, int* type);
+void getArr(char* arrName, int index, int *value, char *c, int* type);
 
 // freeElem
 void freeElem();

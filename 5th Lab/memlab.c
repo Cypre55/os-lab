@@ -22,8 +22,10 @@ void createMem(int MBs)
     long long Bs = MBs * 1000 * 1000;
 
     mem = malloc(Bs);
+    printf("createMem: Allocated %lld Bytes.\n", Bs);
 
     bk = (BookkeepingSegment*) mem;
+    printf("createMem: Separated %ld Bytes for Booking Keeping.\n", sizeof(BookkeepingSegment));
 
     bk->pageTableIndex = 0;
     bk->internalCounter = 0;
@@ -51,6 +53,9 @@ void createMem(int MBs)
     }
     bk->freeSpaceList[0].used = 1;
 
+    printf("createMem: Initialized Booking Keeping data structures.\n");
+
+
     return;
 }
 
@@ -64,6 +69,30 @@ void createVar(char *varName, int type)
     newVar.isMarkToDelete = 0;
     newVar.internalCounter = bk->internalCounter;
     bk->internalCounter += 4;
+
+    printf("createVar: Creating the variable \"%s\" of type", varName);
+    switch (type)
+    {
+    case 0:
+        printf(" int");
+        break;
+    
+    case 1:
+        printf(" char");
+        break;
+
+    case 2:
+        printf(" medium int");
+        break;
+
+    case 3:
+        printf(" boolean");
+        break;
+    
+    default:
+        break;
+    }
+    printf("\n");
     
     // TODO
     // find the physical address and update the entry 'newVar'
@@ -136,48 +165,52 @@ void assignVar(char *varName, long long int value)
             }
             // Find if the variable can fit the value it is being assigned to
 
-            // TODO
-            // Don't know how to handle little endian and big endian
+            printf("assignVar: Found variable \"%s\" in pageTable.\n", varName);
             int type = bk->pageTable[i].type;
             if (type == 0)
             {
                 if (value > (1LL << 31) - 1 || value < -(1LL << 31))
                 {
-                    printf("Cannot assign this variable, the value is out of range.\n");
+                    printf("assignVar: Cannot assign this variable, the value is out of range.\n");
                     exit(1);
                 }
                 int toAssign = value;
                 // printf("Physical Addr: %p\n", bk->pageTable[i].physicalAddress);
+                printf("assignVar: Assigning value \"%d\" in physicalAddress %p.\n", toAssign, bk->pageTable[i].physicalAddress);
+                
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(int));
             }
             else if (type == 1)
             {
                 if (value > (1LL << 7) - 1 || value < -(1 << 7))
                 {
-                    printf("Cannot assign this variable, the value is out of range.\n");
+                    printf("assignVar: Cannot assign this variable, the value is out of range.\n");
                     exit(1);
                 }
                 char toAssign = value;
+                printf("assignVar: Assigning value \"%c\" in physicalAddress %p.\n", toAssign, bk->pageTable[i].physicalAddress);
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(char));
             }
             else if (type == 2)
             {
                 if (value > (1LL << 23) - 1 || value < -(1 << 23))
                 {
-                    printf("Cannot assign this variable, the value is out of range.\n");
+                    printf("assignVar: Cannot assign this variable, the value is out of range.\n");
                     exit(1);
                 }
                 int toAssign = value;
+                printf("assignVar: Assigning value \"%d\" in physicalAddress %p.\n", toAssign, bk->pageTable[i].physicalAddress);
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(int));
             }
             else
             {
                 if (value > 1 || value < 0)
                 {
-                    printf("Cannot assign this variable, the value is out of range.\n");
+                    printf("assignVar: Cannot assign this variable, the value is out of range.\n");
                     exit(1);
                 }
                 char toAssign = 1;
+                printf("assignVar: Assigning value \"%d\" in physicalAddress %p.\n", toAssign, bk->pageTable[i].physicalAddress);
                 memcpy(bk->pageTable[i].physicalAddress, &toAssign, sizeof(char));
             }
 
@@ -190,7 +223,7 @@ void assignVar(char *varName, long long int value)
     return;
 }
 
-void getVar(char* varName, long long *value, char *c, int* type)
+void getVar(char* varName, int *value, char *c, int* type)
 {
     for (int i = 0; i < bk->pageTableIndex; i++)
     {
@@ -205,6 +238,8 @@ void getVar(char* varName, long long *value, char *c, int* type)
 
             // TODO
             // Don't know how to handle little endian and big endian
+            printf("getVar: Found variable \"%s\" in pageTable.\n", varName);
+
             int type_ = bk->pageTable[i].type;
             if (type_ == 0)
             {
@@ -213,7 +248,7 @@ void getVar(char* varName, long long *value, char *c, int* type)
             }
             else if (type_ == 1)
             {
-                int temp = *( (int*) bk->pageTable[i].physicalAddress);
+                int temp = *( (char*) bk->pageTable[i].physicalAddress);
                 *c = (char) temp;
                 *type = 1;
             }
@@ -248,6 +283,30 @@ void createArr(char *arrName, int type, int size)
     newArr.scope = currentScope;
     newArr.internalCounter = bk->internalCounter;
     bk->internalCounter += 4 * numWords;
+
+    printf("createArr: Creating the variable \"%s\" of type", arrName);
+    switch (type)
+    {
+    case 0:
+        printf(" int");
+        break;
+    
+    case 1:
+        printf(" char");
+        break;
+
+    case 2:
+        printf(" medium int");
+        break;
+
+    case 3:
+        printf(" boolean");
+        break;
+    
+    default:
+        break;
+    }
+    printf("\n");
 
     // TODO
     // find the physical address and update the entry 'newArr'
@@ -317,6 +376,8 @@ void assignArr(char *arrName, int index, long long int value)
                 exit(1);
             }
 
+            printf("assignArr: Found array \"%s\" in pageTable, need to assign Index: %d.\n", arrName, index);
+
             int type = bk->pageTable[i].type;
             int typeSize = typeToSize(type);
             int size = bk->pageTable[i].size;
@@ -336,7 +397,7 @@ void assignArr(char *arrName, int index, long long int value)
                     printf("Cannot assign this array, the value is out of range.\n");
                     exit(1);
                 }
-                printf("%lld\n", value);
+                printf("%d\n", index* typeSize);
                 int toAssign = value;
                 memcpy(bk->pageTable[i].physicalAddress + index * typeSize, &toAssign, sizeof(int));
             }
@@ -379,7 +440,7 @@ void assignArr(char *arrName, int index, long long int value)
     return;
 }
 
-void getArr(char* arrName, int index, long long *value, char *c, int* type)
+void getArr(char* arrName, int index, int *value, char *c, int* type)
 {
     for (int i = 0; i < bk->pageTableIndex; i++)
     {
@@ -390,6 +451,8 @@ void getArr(char* arrName, int index, long long *value, char *c, int* type)
                 printf("Cannot assign this array, it is marked for deletion.\n");
                 exit(1);
             }
+
+            printf("getArr: Found array \"%s\" in pageTable, need to access Index: %d.\n", arrName, index);
 
             int type_ = bk->pageTable[i].type;
             int typeSize = typeToSize(type_);
@@ -493,15 +556,17 @@ int typeToSize(int type)
 void initScope()
 {
     currentScope = 0;
+    printf("initScope: Initialized Scope to 0.\n");
 }
-
 void startScope()
 {
     currentScope++;
+    printf("startScope: Started new Scope with depth %d.\n", currentScope);
 }
 
 void endScope()
 {
     currentScope--;
+    printf("endScope: Ended Scope with depth %d.\n", currentScope+1);
 }
 
