@@ -1,0 +1,9 @@
+// Structre of Page Table
+
+// List of Data Structes
+
+// Compact Algo, Logic for invocation
+
+// Impact of GC in terms of memory footprint
+
+// Explaining the usage of locks

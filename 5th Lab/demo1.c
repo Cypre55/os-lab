@@ -10,6 +10,18 @@
 
 int main(void)
 {
-    printf("%ld %ld\n", sizeof(freeSpaceNode), sizeof(pageTableEntry));
-    printf("%ld %ld\n", sizeof(char), sizeof(int));
+
+    createMem(10);
+
+    initScope();
+
+    startScope();
+
+    createVar("a", 0);
+
+    assignVar("b", 10);
+
+
+    endScope();
+
 }
